@@ -11,7 +11,19 @@ import SwiftUI
 struct UsuariosProjectApp: App {
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            TabView {
+//                ContentView()
+                PeopleView()
+                    .tabItem {
+                        Symbols.person
+                        Text("Home")
+                    }
+            }
         }
     }
 }
+
+/*
+ 1 TabView en UsuariosProjectApp
+ 2 PeopleView en Views
+ */
