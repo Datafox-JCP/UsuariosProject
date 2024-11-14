@@ -12,6 +12,8 @@ struct PeopleView: View {
     @StateObject private var vm = UsersViewModel()
 
     @State private var showCreateUser = false
+    @State private var showSuccess = false
+    @State private var hasAppear = false
     
     private let columns = Array(repeating: GridItem(.flexible()), count: 2)
     
@@ -21,37 +23,84 @@ struct PeopleView: View {
             ZStack {
                 background
                 
-                ScrollView  {
-                    LazyVGrid(columns: columns, spacing: 16) {
-                        ForEach(vm.users, id: \.id) { user in
-                            NavigationLink {
-                                DetailView(userId: user.id)
-                            } label: {
-                                PersonItemView(user: user)
-                            }
-                        } // Loop
-                    } // LVGrid
-                    .padding()
-                } // Scroll
+                if vm.isLoading {
+                    ProgressView()
+                } else {
+                    ScrollView  {
+                        LazyVGrid(columns: columns, spacing: 16) {
+                            ForEach(vm.users, id: \.id) { user in
+                                NavigationLink {
+                                    DetailView(userId: user.id)
+                                } label: {
+                                    PersonItemView(user: user)
+                                    // Verificar si se llego al final
+                                        .task {
+                                            if vm.hasReachEnd(of: user) && !vm.isFetching {
+                                                await vm.fetchNextSetOfUsers()
+                                            }
+                                        }
+                                } // Link
+                            } // Loop
+                        } // LVGrid
+                        .padding()
+                    } // Scroll
+                    .overlay(alignment: .bottom) {
+                        if vm.isFetching {
+                            ProgressView()
+                        }
+                    }
+                } // Condition
             } // ZStack
             .navigationTitle("Usuarios")
+            .refreshable {
+                Task {
+                    await vm.fetchUsers()
+                } // Task
+            } // Refresheable
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
                     create
-                }
+                } // Tool item
+                
+                ToolbarItem(placement: .topBarLeading) {
+                    refresh
+                } // Tool item
             } // Toolbar
-            .onAppear {
-                vm.fetchUsers()
-            } // onAppear
+            .task {
+                if !hasAppear {
+                    await vm.fetchUsers()
+                    hasAppear = true
+                } // Condition
+            } // Task
             .sheet(isPresented: $showCreateUser) {
-                CreateView()
+                CreateView {
+                    haptic(.success)
+                    withAnimation(.spring().delay(0.25)) {
+                        showSuccess.toggle()
+                    } // Animation
+                } // Create
                     .presentationDetents([.medium, .large])
             } // Sheet
             .alert(isPresented: $vm.hasError, error: vm.error) {
                 Button("Reintentar") {
-                    vm.fetchUsers()
-                }
-            }
+                    Task {
+                        await vm.fetchUsers()
+                    } // Task
+                } // Button
+            } // Alert
+            .overlay {
+                if showSuccess {
+                    CheckMarkView()
+                        .transition(.scale.combined(with: .opacity)) // después de probar la animación de abajo
+                        .onAppear {
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                                withAnimation(.spring()) {
+                                    self.showSuccess.toggle()
+                                } // Animation
+                            } // Dispatch
+                        } // onAppear
+                } // Condition
+            } // Overlay
         } // Nav
     }
 }
@@ -85,5 +134,17 @@ private extension PeopleView {
                 .font(.system(.headline, design: .rounded))
                 .bold()
         }
+        .disabled(vm.isLoading)
+    }
+    
+    var refresh: some View {
+        Button {
+            Task {
+                await vm.fetchUsers()
+            }
+        } label: {
+            Symbols.refresh
+        }
+        .disabled(vm.isLoading)
     }
 }

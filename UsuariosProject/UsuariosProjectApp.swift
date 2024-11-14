@@ -12,11 +12,16 @@ struct UsuariosProjectApp: App {
     var body: some Scene {
         WindowGroup {
             TabView {
-//                ContentView()
                 PeopleView()
                     .tabItem {
                         Symbols.person
                         Text("Home")
+                    }
+                
+                SettingsView()
+                    .tabItem{
+                        Symbols.gear
+                        Text("Settings")
                     }
             }
         }

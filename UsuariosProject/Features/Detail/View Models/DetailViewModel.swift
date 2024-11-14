@@ -10,22 +10,24 @@ import Foundation
 final class DetailViewModel: ObservableObject {
     @Published private(set) var userInfo: UserDetailResponse?
     @Published private(set) var error: NetworkManager.NetworkError?
+    @Published private(set) var isLoading = false
     @Published var hasError = false
     
-    func fetchDetails(for id: Int) {
-        NetworkManager.shared.request(
-            "https://reqres.in/api/users/\(id)",
-            type: UserDetailResponse.self) { [weak self] res in
-                DispatchQueue.main.async {
-                    switch res {
-                    case .success(let response):
-                        self?.userInfo = response
-                    case .failure(let error):
-//                        print(error)
-                        self?.hasError = true
-                        self?.error = error as? NetworkManager.NetworkError
-                    }
-                }
+    @MainActor
+    func fetchDetails(for id: Int) async {
+        isLoading.toggle()
+        
+        defer { isLoading = false }
+        
+        do {
+            self.userInfo = try await NetworkManager.shared.request(.detail(id: id), type: UserDetailResponse.self)
+        } catch {
+            self.hasError = true
+            if let networkingError = error as? NetworkManager.NetworkError {
+                self.error = networkingError
+            } else {
+                self.error = .custom(error: error)
             }
+        }
     }
 }

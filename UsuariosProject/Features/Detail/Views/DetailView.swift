@@ -18,25 +18,29 @@ struct DetailView: View {
         ZStack {
             background
             
-            ScrollView {
-                VStack(alignment: .leading, spacing: 18) {
-                    avatar
-                    
-                    Group {
-                        general
-                        link
-                    }
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 18)
-                    .background(Theme.detailBackground, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-                    
-                } // VStack
-                .padding()
-            } // Scroll
+            if vm.isLoading {
+                ProgressView()
+            } else {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 18) {
+                        avatar
+                        
+                        Group {
+                            general
+                            link
+                        }
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 18)
+                        .background(Theme.detailBackground, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        
+                    } // VStack
+                    .padding()
+                } // Scroll
+            }
         } // ZStack
         .navigationTitle("Detalles")
-        .onAppear {
-            vm.fetchDetails(for: userId)
+        .task {
+            await vm.fetchDetails(for: userId)
         }
         .alert(isPresented: $vm.hasError, error: vm.error) { }
     }
@@ -121,6 +125,7 @@ private extension DetailView {
                         .multilineTextAlignment(.leading)
                     
                     Text(supportAbsoluteString)
+                        .multilineTextAlignment(.leading)
                 } // VStack
                 
                 Spacer()
